@@ -567,7 +567,7 @@ class TransformerModel(nn.Module):
 
         return tensor
 
-    def get_the_y_gcd_index(self, y, special_token='<eos>'):
+    def get_the_gcd_index(self, y, special_token='<eos>'):
         '''
         return the gcd index.
         V1 is going to be special token such that it signals after the gcd
