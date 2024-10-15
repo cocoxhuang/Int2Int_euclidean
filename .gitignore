@@ -1,0 +1,5 @@
+# Ignore OS-specific files
+.DS_Store
+
+# Ignore all data files
+data/*
