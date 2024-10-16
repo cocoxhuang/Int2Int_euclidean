@@ -441,6 +441,17 @@ class Trainer(object):
     def enc_dec_step(self, task):
         """
         Encoding / decoding step.
+        
+        x1: dim: (slen, batch size)
+            the ids of tokens in the input
+            slen is the length of the longest sentence in the batch of input
+        x2: dim: (slen, batch size)
+            the ids of tokens in the output
+            slen is the length of the longest sentence in the batch of output
+        len1: 
+            the vector telling the lengths of each sentence in input
+        len2: 
+            the vector telling the lengths of each sentence in output
         """
         params = self.params
         
@@ -457,10 +468,48 @@ class Trainer(object):
 
         # target words to predict
         if params.architecture != "encoder_only":
+            # This represents the indices of the tokens for the longest sentence in the output batch.
+            # Example: longest sentence in output has lengeth 6, then
+            # returns: alen = [0,1,2,3,4,5]
             alen = torch.arange(len2.max(), dtype=torch.long, device=len2.device)
+            
+            '''
+            alen[:, None]: 
+                reshapes alen to a column vector of shape (len2.max(), 1)
+            len2[None]:
+                reshapes len2 into a row vector of shape (1, batch_size), allowing the broadcast comparison.
+            (alen[:, None] < len2[None]):
+                compares each element of alen with the corresponding element in len2 - 1. 
+                It returns True (1) if the index is less than the sentence length in len2 - 1 and False (0) otherwise. 
+                This creates a mask of shape (len1.max(), batch_size).
+            
+            Example: 
+                len2 = [5, 6]  # First sentence has 5 tokens, second sentence has 6 tokens
+                alen = [0, 1, 2, 3, 4, 5]  # Max length 6 as len2.max() == 6
+                ---->
+                pred_mask = 
+                [[True, True],      # alen[0] < [3, 5]
+                 [True, True],      # alen[1] < [3, 5]
+                 [True, True],      # alen[2] < [3, 5]
+                 [True, True],      # alen[3] < [3, 5]
+                 [False, True],     # alen[4] < [3, 5]
+                 [False, False]]    # alen[5] < [3, 5]
+            '''
             pred_mask = (
                 alen[:, None] < len2[None] - 1
             )  # do not predict anything given the last target word
+            # y becomes dim (pred_mask.sum(),)  
+            
+            '''
+            Following the examples above,
+            if x2 =  [[10, 20],  # First token of each sequence
+                      [11, 21],
+                      [12, 22],
+                      [13, 23],
+                      [14, 24],  # Fifth token
+                          [5]]  
+            y = [11, 21, 12, 22, 13, 23, 14, 24]
+            '''
             y = x2[1:].masked_select(pred_mask[:-1])
             assert len(y) == (len2 - 1).sum().item()
         else: 

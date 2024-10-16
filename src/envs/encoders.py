@@ -101,16 +101,22 @@ class NumberArray(Encoder):
 
     def decode(self, lst):
         shap = [] 
-        h = lst
+        h = lst  # h is the list of output tokens seperated by ' '
+        
+        # self.tensor_dim is the dim of tensor
+        # if output is an array then is 1
         for _ in range(self.tensor_dim):
-            v, _ = self.dimencoder.parse(h)
+            v, _ = self.dimencoder.parse(h)  # v is the max dim of seq n in array encoded as "Vn" if prefix is "V"
+            
             if v is None:
                 return None
             shap.append(v)
             h = h[1:]
-        m = np.zeros(tuple(shap), dtype=int)
+        m = np.zeros(tuple(shap), dtype=int) 
+                
         for val in np.nditer(m, op_flags=['readwrite']):
             v, pos = self.subencoder.parse(h)
+                        
             if v is None:
                 return None
             h = h[pos:]

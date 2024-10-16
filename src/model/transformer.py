@@ -566,29 +566,6 @@ class TransformerModel(nn.Module):
         tensor = tensor.transpose(0, 1)
 
         return tensor
-
-    def get_the_gcd_index(self, y, special_token='<eos>'):
-        '''
-        return the gcd index.
-        V1 is going to be special token such that it signals after the gcd
-        gcd index in the y is the index before 
-
-        shape of y : [batch_size, len_output]
-        '''
-        # return the indince of where in y is the id of V1
-        len_words = y.shape[1]
-        special_id = self.word2id[special_token]
-        gcd_index = torch.zeros(y.shape[0])
-        for sample in range(y.shape[0]):
-            try:
-                # find in each sample in the batch of y where the id of V1 occurs the last time
-                this_last_V1_index = torch.where(y[sample,:] == special_id)[0][-1]
-            except:
-                # then the speical word is not found
-                # just let it to be the last word
-                this_last_V1_index = len_words
-            gcd_index[sample] = this_last_V1_index - 1
-        return gcd_index.long() if gcd_index > 0 else 0
     
     def predict(self, tensor, pred_mask, y, get_scores):
         """
@@ -597,24 +574,27 @@ class TransformerModel(nn.Module):
                 we need to predict a word
             `y` is a LongTensor of shape (pred_mask.sum(),)
             `get_scores` is a boolean specifying whether we need to return scores
-        """
+            
+        tensor: 
+            of dim (sequence len x batch size x embedding dim)
+        pred_mask: 
+            of dim (sequence len x batch size)
+            A mask with True's where we want to predict and False's where we don’t.
+            e.g.
+            [[True, 0, 0, True, 0, True, ..., 0],
+            [0, True, 0, 0, 0, 0, ..., True], 
+            ...
+            [True, 0, True, 0, True, ..., 0]]
+        y: 
+            of dim (pred_mask.sum(),)  
+        """      
+        # pred_mask.unsqueeze(-1).expand_as(tensor): # becomes same dim as tensor
         x = tensor[pred_mask.unsqueeze(-1).expand_as(tensor)].view(-1, self.dim)
         assert (y == self.pad_index).sum().item() == 0
         scores = self.proj(x).view(-1, self.n_words)
-
-        # first: get the gcd in the sequence of eucliden algorithm
-        # gcd is going to be the word before the speical token
-        # y : [batch_size, len_output] -> 
-        # y_gcd = [batch_size, n_words]
-        y_gcd_index = self.get_the_gcd_index(self,y, special_token='V1')
-        y_gcd = y[torch.arange(y.shape[0]),self.get_the_y_gcd_index(y)]
-        # second, get the predictions of the model
-        scores_pred = torch.argmax(scores, dim=1)
-        scores_pred_gcd_index = self.get_the_gcd_index(scores_pred, special_token='V1')
-        scores_pred_gcd = scores_pred[torch.arange(scores_pred.shape[0]), scores_pred_gcd_index]
-
-        loss = F.cross_entropy(scores_pred.float(), y_gcd, reduction="mean")
+        loss = F.cross_entropy(scores.float(), y, reduction="mean")
         return scores, loss
+
 
     def decode(self, src_enc, src_len, exp_len):
          # input batch
@@ -747,7 +727,8 @@ class TransformerModel(nn.Module):
 
         # add <EOS> to unfinished sentences
         if cur_len == max_len:
-            generated[-1].masked_fill_(unfinished_sents.byte(), self.eos_index)
+#             generated[-1].masked_fill_(unfinished_sents.byte(), self.eos_index)
+            generated[-1].masked_fill_(unfinished_sents.bool(), self.eos_index)
 
         # sanity check
         assert (generated == self.eos_index).sum() == 2 * bs

@@ -254,7 +254,12 @@ class Evaluator(object):
 
             # stats
             xe_loss += loss.item() * len(y)
-            n_valid.index_add_(-1, nb_ops, valid)
+            '''
+            n_valid : tensor of len test eqs size
+            nb_ops : len batch size.
+            valid : len batch size.
+            '''
+            n_valid.index_add_(-1, nb_ops, valid)  # keep track where we get the output seq right
             n_total.index_add_(-1, nb_ops, torch.ones_like(nb_ops))
 
             # continue if everything is correct. if eval_verbose, perform

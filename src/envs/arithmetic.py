@@ -31,14 +31,14 @@ class InvalidPrefixExpression(Exception):
     def __str__(self):
         return repr(self.data)
 
-def data_type_to_encoder(params, typ):
-    tensor_dim = typ.count('[')
+def data_type_to_encoder(params, typ):    
+    tensor_dim = typ.count('[')     
     assert tensor_dim == typ.count(']')
     if typ.startswith('int'):
         ext = typ[3:]
         if tensor_dim > 0:
             dims = [int(elt.strip('[')) for elt in ext.strip(']').split(']')]
-            max_dim = max(dims)
+            max_dim = max(dims)          
             assert ext == ''.join(f'[{d}]' for d in dims)
             return encoders.NumberArray(params, max_dim, 'V', tensor_dim)
         else:
@@ -73,7 +73,7 @@ class ArithmeticEnvironment(object):
         self.base = params.base
         self.class_by_length = params.class_by_length
         self.max_class = params.max_class
-
+                    
         if self.operation == 'data':
             assert params.data_types, "argument --data_types is required"
             i, o = params.data_types.split(':')
@@ -150,7 +150,11 @@ class ArithmeticEnvironment(object):
         """
         The code class splits the test data in to subgroups by code_class
         This is passed to the evaluator, so it needs to be an integer
+        
+        xi : input string seperated by ' '
+        yi : output string seperated by ' ' 
         """
+        
         if self.operation in ["fraction_add", "fraction_product", "fraction_simplify", "fraction_round", "fraction_determinant"]:
             return 0
         elif self.operation in ["gcd", "modular_add", "modular_mul"]:
